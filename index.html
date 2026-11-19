@@ -3,110 +3,364 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Flowers-shop — Магазин цветов</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flowers-shop — Цветы с любовью</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 *{box-sizing:border-box}
-body{margin:0;font-family:Arial,sans-serif;background:#fff8fa;color:#49343d}
-header{background:#f8dce6;padding:22px 6%;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px}
+body{margin:0;background:#fff8fa;color:#49343d;font-family:Arial,sans-serif}
+header{background:#f8dce6;padding:18px 5%;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px}
 .logo{font-size:27px;font-weight:bold;color:#a34469}
 button{border:0;border-radius:20px;padding:11px 18px;background:#bd6487;color:white;cursor:pointer}
+button:hover{background:#9e456b}
+.secondary{background:#967783}
+input,textarea,select{padding:12px;border:1px solid #e5b8ca;border-radius:10px;margin:5px 0;width:100%;max-width:450px;font:inherit}
+textarea{min-height:75px}
 .hero{text-align:center;padding:55px 15px;background:#fcebf1}
 .hero h1{font-size:36px;color:#a34469}
-.hero p{font-size:18px}
-main{max-width:1100px;margin:35px auto;padding:0 18px}
+main{max-width:1100px;margin:30px auto;padding:0 18px}
 .products{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:22px}
-.card{background:white;border-radius:18px;padding:15px;box-shadow:0 3px 14px #ead5dd;text-align:center}
+.card,.panel,.cart{background:white;border-radius:18px;padding:17px;box-shadow:0 3px 14px #ead5dd}
+.card{text-align:center}
 .card img{width:100%;height:190px;object-fit:cover;border-radius:13px}
 .card h3{color:#a34469}
-.price{font-size:19px;font-weight:bold;margin:10px}
-.cart{background:white;padding:22px;border-radius:18px;margin:35px 0;box-shadow:0 3px 14px #ead5dd}
-.cart-item{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #f1dce4;flex-wrap:wrap}
+.price{font-size:18px;font-weight:bold;margin:9px}
+.cart,.panel{margin:30px 0}
+.cart-item{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:12px 0;border-bottom:1px solid #f1dce4;flex-wrap:wrap}
 .cart-item button{padding:6px 12px}
-input{padding:12px;border:1px solid #e5b8ca;border-radius:10px;margin:5px;width:100%;max-width:350px}
-footer{text-align:center;padding:25px;background:#f8dce6}
+.admin-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}
+.admin-product{padding:12px;border-bottom:1px solid #f1dce4}
+.admin-product img{width:65px;height:65px;object-fit:cover;border-radius:9px;vertical-align:middle;margin-right:10px}
+.hidden{display:none}
+.notice{color:#8d526c}
+footer{text-align:center;padding:25px;background:#f8dce6;margin-top:40px}
 </style>
 </head>
 <body>
 <header>
-<div class="logo">🌸 Flowers-shop</div>
-<button onclick="document.getElementById('cart').scrollIntoView()">🛒 Корзина (<span id="count">0</span>)</button>
+  <div class="logo">🌸 Flowers-shop</div>
+  <div>
+    <button onclick="document.getElementById('cart').scrollIntoView()">🛒 Корзина (<span id="count">0</span>)</button>
+    <button class="secondary" onclick="document.getElementById('admin').scrollIntoView()">Администратор</button>
+  </div>
 </header>
+
 <section class="hero">
-<h1>Цветы с любовью 🌷</h1>
-<p>Красивые букеты для самых важных моментов</p>
-<button onclick="document.getElementById('catalog').scrollIntoView()">Смотреть каталог</button>
+  <h1>Цветы с любовью 🌷</h1>
+  <p>Красивые букеты для самых важных моментов</p>
+  <button onclick="document.getElementById('catalog').scrollIntoView()">Смотреть каталог</button>
 </section>
+
 <main>
-<h2 id="catalog">🌸 Наш каталог</h2>
-<div class="products" id="products"></div>
-<section class="cart" id="cart">
-<h2>🛒 Моя корзина</h2>
-<div id="cartItems">Корзина пока пуста</div>
-<h3>Итого: <span id="total">0</span> ₽</h3>
-<h3>Оформить заказ</h3>
-<input id="customerName" placeholder="Ваше имя">
-<input id="customerPhone" placeholder="Ваш телефон">
-<button onclick="order()">Отправить заказ</button>
-<p id="orderMessage"></p>
-</section>
+  <h2 id="catalog">🌸 Каталог цветов</h2>
+  <label for="priceMode">Показывать цены:</label>
+  <select id="priceMode" onchange="renderProducts();renderCart()">
+    <option value="retail">Розничные</option>
+    <option value="wholesale">Оптовые</option>
+  </select>
+  <div class="products" id="products">Загружаем каталог...</div>
+
+  <section class="cart" id="cart">
+    <h2>🛒 Моя корзина</h2>
+    <div id="cartItems">Корзина пока пуста</div>
+    <h3>Итого: <span id="total">0</span> ₽</h3>
+    <h3>Оформить заказ</h3>
+    <input id="customerName" placeholder="Ваше имя">
+    <input id="customerPhone" placeholder="Ваш телефон">
+    <button onclick="order()">Подготовить заказ</button>
+    <p id="orderMessage" class="notice"></p>
+  </section>
+
+  <section class="panel" id="admin">
+    <h2>🔐 Панель администратора</h2>
+    <div id="loginBox">
+      <p>Войдите, чтобы управлять товарами магазина.</p>
+      <input id="email" type="email" placeholder="Электронная почта">
+      <input id="password" type="password" placeholder="Пароль">
+      <br>
+      <button onclick="login()">Войти</button>
+      <p id="loginMessage" class="notice"></p>
+    </div>
+
+    <div id="adminBox" class="hidden">
+      <p class="notice">Вы вошли как администратор.</p>
+      <button class="secondary" onclick="logout()">Выйти</button>
+      <h3 id="formTitle">Добавить новый букет</h3>
+      <div class="admin-grid">
+        <input id="productName" placeholder="Название букета">
+        <input id="retailPrice" type="number" min="0" placeholder="Розничная цена, ₽">
+        <input id="wholesalePrice" type="number" min="0" placeholder="Оптовая цена, ₽">
+      </div>
+      <textarea id="productDescription" placeholder="Описание букета"></textarea>
+      <p>Фотография букета:</p>
+      <input id="productImage" type="file" accept="image/*">
+      <p class="notice">При редактировании можно не выбирать новое фото — прежнее сохранится.</p>
+      <button onclick="saveProduct()">Сохранить товар</button>
+      <button class="secondary" onclick="resetForm()">Очистить форму</button>
+      <p id="adminMessage" class="notice"></p>
+      <h3>Товары магазина</h3>
+      <div id="adminProducts"></div>
+    </div>
+  </section>
 </main>
+
 <footer>🌸 Flowers-shop — цветы с любовью 🌸</footer>
+
 <script>
-const products=[
-{id:1,name:"Нежные розы",description:"Букет из красивых роз",price:3500,wholesale:2800,image:"https://images.unsplash.com/photo-1548586196-aa5803b77379?w=600"},
-{id:2,name:"Розовые тюльпаны",description:"Нежный весенний букет",price:2500,wholesale:1900,image:"https://images.unsplash.com/photo-1520763185298-1b434c919102?w=600"},
-{id:3,name:"Букет пионов",description:"Пышные и ароматные цветы",price:4500,wholesale:3700,image:"https://images.unsplash.com/photo-1591886960571-74d43a9d4166?w=600"},
-{id:4,name:"Белые розы",description:"Элегантный классический букет",price:3200,wholesale:2600,image:"https://images.unsplash.com/photo-1562690868-60bbe7293e94?w=600"}
-];
-let cart=[];
-function renderProducts(){
-document.getElementById("products").innerHTML=products.map(p=>`
-<div class="card">
-<img src="${p.image}" alt="${p.name}">
-<h3>${p.name}</h3>
-<p>${p.description}</p>
-<div class="price">${p.price.toLocaleString("ru-RU")} ₽</div>
-<button onclick="add(${p.id})">Добавить в корзину</button>
-</div>`).join("");
+const SUPABASE_URL = "https://gylgaotyqovacypznfbk.supabase.co";
+const SUPABASE_KEY = "sb_publishable_a_Xg1AyDV0wajMT7W4O1kw_fRfo29--";
+const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+let products = [];
+let cart = [];
+let editingId = null;
+let editingImage = "";
+
+function escapeHtml(value) {
+  return String(value ?? "").replace(/[&<>"']/g, c => ({
+    "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
+  })[c]);
 }
-function add(id){
-let item=cart.find(x=>x.id===id);
-if(item)item.qty++;else cart.push({id,qty:1});
-renderCart();
+function money(value) {
+  return Number(value || 0).toLocaleString("ru-RU");
 }
-function change(id,amount){
-let item=cart.find(x=>x.id===id);
-if(!item)return;
-item.qty+=amount;
-if(item.qty<=0)cart=cart.filter(x=>x.id!==id);
-renderCart();
+function currentPrice(p) {
+  return document.getElementById("priceMode").value === "wholesale"
+    ? Number(p.wholesale_price || 0)
+    : Number(p.retail_price || 0);
 }
-function renderCart(){
-let count=cart.reduce((s,x)=>s+x.qty,0);
-let total=cart.reduce((s,x)=>s+x.qty*products.find(p=>p.id===x.id).price,0);
-document.getElementById("count").textContent=count;
-document.getElementById("total").textContent=total.toLocaleString("ru-RU");
-document.getElementById("cartItems").innerHTML=cart.length?cart.map(x=>{
-let p=products.find(z=>z.id===x.id);
-return `<div class="cart-item"><span>${p.name} — ${p.price.toLocaleString("ru-RU")} ₽</span>
-<div><button onclick="change(${x.id},-1)">−</button> ${x.qty} <button onclick="change(${x.id},1)">+</button></div>
-</div>`;
-}).join(""):"Корзина пока пуста";
+
+async function loadProducts() {
+  const {data,error} = await db.from("products").select("*").order("created_at",{ascending:false});
+  if(error) {
+    document.getElementById("products").textContent = "Не удалось загрузить товары: " + error.message;
+    return;
+  }
+  products = data || [];
+  renderProducts();
+  renderCart();
+  renderAdminProducts();
 }
-function order(){
-if(!cart.length){alert("Сначала добавьте товары в корзину");return;}
-let name=document.getElementById("customerName").value.trim();
-let phone=document.getElementById("customerPhone").value.trim();
-if(!name||!phone){alert("Укажите имя и телефон");return;}
-let lines=cart.map(x=>{let p=products.find(z=>z.id===x.id);return `${p.name} — ${x.qty} шт. — ${p.price*x.qty} ₽`;}).join("\n");
-let total=cart.reduce((s,x)=>s+x.qty*products.find(p=>p.id===x.id).price,0);
-let message=`Заказ Flowers-shop\nИмя: ${name}\nТелефон: ${phone}\n${lines}\nИтого: ${total} ₽`;
-document.getElementById("orderMessage").textContent="Заказ подготовлен. Скопируйте его и отправьте продавцу.";
-navigator.clipboard.writeText(message).then(()=>alert("Заказ скопирован! Отправьте его продавцу.")).catch(()=>alert(message));
+
+function renderProducts() {
+  const box = document.getElementById("products");
+  if(!products.length) {
+    box.innerHTML = "<p>Пока товаров нет. Администратор может добавить первые букеты.</p>";
+    return;
+  }
+  box.innerHTML = products.map(p => `
+    <article class="card">
+      ${p.image_url ? `<img src="${escapeHtml(p.image_url)}" alt="${escapeHtml(p.name)}">` : ""}
+      <h3>${escapeHtml(p.name)}</h3>
+      <p>${escapeHtml(p.description)}</p>
+      <div class="price">${money(currentPrice(p))} ₽</div>
+      <button onclick="addToCart('${p.id}')">Добавить в корзину</button>
+    </article>
+  `).join("");
 }
-renderProducts();
-renderCart();
+
+function addToCart(id) {
+  const item = cart.find(x => x.id === id);
+  if(item) item.qty++;
+  else cart.push({id,qty:1});
+  renderCart();
+}
+function changeQty(id,amount) {
+  const item = cart.find(x => x.id === id);
+  if(!item) return;
+  item.qty += amount;
+  if(item.qty <= 0) cart = cart.filter(x => x.id !== id);
+  renderCart();
+}
+function renderCart() {
+  const count = cart.reduce((s,x) => s+x.qty,0);
+  const total = cart.reduce((s,x) => {
+    const p = products.find(z => z.id === x.id);
+    return s + (p ? currentPrice(p)*x.qty : 0);
+  },0);
+  document.getElementById("count").textContent = count;
+  document.getElementById("total").textContent = money(total);
+  document.getElementById("cartItems").innerHTML = cart.length
+    ? cart.map(x => {
+      const p = products.find(z => z.id === x.id);
+      if(!p) return "";
+      return `<div class="cart-item">
+        <span>${escapeHtml(p.name)} — ${money(currentPrice(p))} ₽</span>
+        <div>
+          <button onclick="changeQty('${p.id}',-1)">−</button>
+          ${x.qty}
+          <button onclick="changeQty('${p.id}',1)">+</button>
+        </div>
+      </div>`;
+    }).join("")
+    : "Корзина пока пуста";
+}
+
+async function order() {
+  if(!cart.length) {
+    alert("Сначала добавьте товары в корзину");
+    return;
+  }
+  const name = document.getElementById("customerName").value.trim();
+  const phone = document.getElementById("customerPhone").value.trim();
+  if(!name || !phone) {
+    alert("Укажите имя и телефон");
+    return;
+  }
+  const lines = cart.map(x => {
+    const p = products.find(z => z.id === x.id);
+    return `${p.name} — ${x.qty} шт. — ${money(currentPrice(p)*x.qty)} ₽`;
+  }).join("\n");
+  const total = cart.reduce((s,x) => s+currentPrice(products.find(p=>p.id===x.id))*x.qty,0);
+  const message = `Заказ Flowers-shop\nИмя: ${name}\nТелефон: ${phone}\n${lines}\nИтого: ${money(total)} ₽`;
+  try {
+    await navigator.clipboard.writeText(message);
+    document.getElementById("orderMessage").textContent =
+      "Заказ скопирован. Теперь отправьте его продавцу удобным способом.";
+  } catch(e) {
+    document.getElementById("orderMessage").textContent =
+      "Не удалось автоматически скопировать заказ. Выделите и скопируйте текст ниже.";
+    document.getElementById("orderMessage").textContent += "\n" + message;
+  }
+}
+
+async function login() {
+  const email = document.getElementById("email").value.trim();
+  const password = document.getElementById("password").value;
+  const msg = document.getElementById("loginMessage");
+  msg.textContent = "Выполняется вход...";
+  const {data,error} = await db.auth.signInWithPassword({email,password});
+  if(error) {
+    msg.textContent = "Ошибка входа: " + error.message;
+    return;
+  }
+  await showAdmin(data.user);
+}
+async function logout() {
+  await db.auth.signOut();
+  document.getElementById("loginBox").classList.remove("hidden");
+  document.getElementById("adminBox").classList.add("hidden");
+  document.getElementById("password").value = "";
+}
+async function showAdmin(user) {
+  document.getElementById("loginBox").classList.add("hidden");
+  document.getElementById("adminBox").classList.remove("hidden");
+  document.getElementById("loginMessage").textContent = "";
+  document.getElementById("adminMessage").textContent = "Вход выполнен: " + user.email;
+  renderAdminProducts();
+}
+function renderAdminProducts() {
+  const box = document.getElementById("adminProducts");
+  if(!box || !products.length) {
+    if(box) box.innerHTML = "Товаров пока нет.";
+    return;
+  }
+  box.innerHTML = products.map(p => `
+    <div class="admin-product">
+      ${p.image_url ? `<img src="${escapeHtml(p.image_url)}" alt="">` : ""}
+      <strong>${escapeHtml(p.name)}</strong>
+      <p>Розница: ${money(p.retail_price)} ₽ · Опт: ${money(p.wholesale_price)} ₽</p>
+      <button onclick="editProduct('${p.id}')">Изменить</button>
+      <button class="secondary" onclick="deleteProduct('${p.id}')">Удалить</button>
+    </div>
+  `).join("");
+}
+function editProduct(id) {
+  const p = products.find(x => x.id === id);
+  if(!p) return;
+  editingId = id;
+  editingImage = p.image_url || "";
+  document.getElementById("productName").value = p.name || "";
+  document.getElementById("productDescription").value = p.description || "";
+  document.getElementById("retailPrice").value = p.retail_price || 0;
+  document.getElementById("wholesalePrice").value = p.wholesale_price || 0;
+  document.getElementById("productImage").value = "";
+  document.getElementById("formTitle").textContent = "Изменить товар";
+  document.getElementById("adminMessage").textContent = "Изменяете: " + p.name;
+  document.getElementById("admin").scrollIntoView();
+}
+function resetForm() {
+  editingId = null;
+  editingImage = "";
+  ["productName","productDescription","retailPrice","wholesalePrice","productImage"].forEach(id => {
+    document.getElementById(id).value = "";
+  });
+  document.getElementById("formTitle").textContent = "Добавить новый букет";
+  document.getElementById("adminMessage").textContent = "";
+}
+async function saveProduct() {
+  const msg = document.getElementById("adminMessage");
+  const name = document.getElementById("productName").value.trim();
+  const description = document.getElementById("productDescription").value.trim();
+  const retail = Number(document.getElementById("retailPrice").value);
+  const wholesale = Number(document.getElementById("wholesalePrice").value);
+  const file = document.getElementById("productImage").files[0];
+
+  if(!name) { msg.textContent = "Введите название товара."; return; }
+  if(!Number.isFinite(retail) || retail < 0 || !Number.isFinite(wholesale) || wholesale < 0) {
+    msg.textContent = "Проверьте розничную и оптовую цены."; return;
+  }
+  const {data:sessionData} = await db.auth.getSession();
+  if(!sessionData.session) { msg.textContent = "Сначала войдите в аккаунт администратора."; return; }
+
+  msg.textContent = "Сохраняем товар...";
+  let imageUrl = editingImage;
+
+  if(file) {
+    if(!file.type.startsWith("image/")) { msg.textContent = "Выберите файл изображения."; return; }
+    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g,"_");
+    const path = crypto.randomUUID() + "-" + safeName;
+    const {error:uploadError} = await db.storage.from("flowers").upload(path,file,{upsert:false});
+    if(uploadError) { msg.textContent = "Ошибка загрузки фото: " + uploadError.message; return; }
+    const {data:urlData} = db.storage.from("flowers").getPublicUrl(path);
+    imageUrl = urlData.publicUrl;
+  } else if(!editingId && !imageUrl) {
+    msg.textContent = "Выберите фотографию для нового товара.";
+    return;
+  }
+
+  const record = {
+    name,
+    description,
+    image_url:imageUrl,
+    retail_price:retail,
+    wholesale_price:wholesale
+  };
+  let result;
+  if(editingId) {
+    result = await db.from("products").update(record).eq("id",editingId);
+  } else {
+    result = await db.from("products").insert(record);
+  }
+  if(result.error) {
+    msg.textContent = "Ошибка сохранения: " + result.error.message;
+    return;
+  }
+  msg.textContent = "Товар успешно сохранён!";
+  resetForm();
+  await loadProducts();
+}
+async function deleteProduct(id) {
+  if(!confirm("Удалить этот товар из каталога?")) return;
+  const {error} = await db.from("products").delete().eq("id",id);
+  if(error) {
+    document.getElementById("adminMessage").textContent = "Ошибка удаления: " + error.message;
+    return;
+  }
+  cart = cart.filter(x => x.id !== id);
+  document.getElementById("adminMessage").textContent = "Товар удалён.";
+  await loadProducts();
+}
+
+async function init() {
+  const {data} = await db.auth.getSession();
+  if(data.session) await showAdmin(data.session.user);
+  await loadProducts();
+}
+db.auth.onAuthStateChange((_event,session) => {
+  if(session) showAdmin(session.user);
+});
+init();
 </script>
 </body>
 </html>
