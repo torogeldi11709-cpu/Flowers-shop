@@ -1,0 +1,112 @@
+
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Flowers-shop — Магазин цветов</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial,sans-serif;background:#fff8fa;color:#49343d}
+header{background:#f8dce6;padding:22px 6%;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px}
+.logo{font-size:27px;font-weight:bold;color:#a34469}
+button{border:0;border-radius:20px;padding:11px 18px;background:#bd6487;color:white;cursor:pointer}
+.hero{text-align:center;padding:55px 15px;background:#fcebf1}
+.hero h1{font-size:36px;color:#a34469}
+.hero p{font-size:18px}
+main{max-width:1100px;margin:35px auto;padding:0 18px}
+.products{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:22px}
+.card{background:white;border-radius:18px;padding:15px;box-shadow:0 3px 14px #ead5dd;text-align:center}
+.card img{width:100%;height:190px;object-fit:cover;border-radius:13px}
+.card h3{color:#a34469}
+.price{font-size:19px;font-weight:bold;margin:10px}
+.cart{background:white;padding:22px;border-radius:18px;margin:35px 0;box-shadow:0 3px 14px #ead5dd}
+.cart-item{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #f1dce4;flex-wrap:wrap}
+.cart-item button{padding:6px 12px}
+input{padding:12px;border:1px solid #e5b8ca;border-radius:10px;margin:5px;width:100%;max-width:350px}
+footer{text-align:center;padding:25px;background:#f8dce6}
+</style>
+</head>
+<body>
+<header>
+<div class="logo">🌸 Flowers-shop</div>
+<button onclick="document.getElementById('cart').scrollIntoView()">🛒 Корзина (<span id="count">0</span>)</button>
+</header>
+<section class="hero">
+<h1>Цветы с любовью 🌷</h1>
+<p>Красивые букеты для самых важных моментов</p>
+<button onclick="document.getElementById('catalog').scrollIntoView()">Смотреть каталог</button>
+</section>
+<main>
+<h2 id="catalog">🌸 Наш каталог</h2>
+<div class="products" id="products"></div>
+<section class="cart" id="cart">
+<h2>🛒 Моя корзина</h2>
+<div id="cartItems">Корзина пока пуста</div>
+<h3>Итого: <span id="total">0</span> ₽</h3>
+<h3>Оформить заказ</h3>
+<input id="customerName" placeholder="Ваше имя">
+<input id="customerPhone" placeholder="Ваш телефон">
+<button onclick="order()">Отправить заказ</button>
+<p id="orderMessage"></p>
+</section>
+</main>
+<footer>🌸 Flowers-shop — цветы с любовью 🌸</footer>
+<script>
+const products=[
+{id:1,name:"Нежные розы",description:"Букет из красивых роз",price:3500,wholesale:2800,image:"https://images.unsplash.com/photo-1548586196-aa5803b77379?w=600"},
+{id:2,name:"Розовые тюльпаны",description:"Нежный весенний букет",price:2500,wholesale:1900,image:"https://images.unsplash.com/photo-1520763185298-1b434c919102?w=600"},
+{id:3,name:"Букет пионов",description:"Пышные и ароматные цветы",price:4500,wholesale:3700,image:"https://images.unsplash.com/photo-1591886960571-74d43a9d4166?w=600"},
+{id:4,name:"Белые розы",description:"Элегантный классический букет",price:3200,wholesale:2600,image:"https://images.unsplash.com/photo-1562690868-60bbe7293e94?w=600"}
+];
+let cart=[];
+function renderProducts(){
+document.getElementById("products").innerHTML=products.map(p=>`
+<div class="card">
+<img src="${p.image}" alt="${p.name}">
+<h3>${p.name}</h3>
+<p>${p.description}</p>
+<div class="price">${p.price.toLocaleString("ru-RU")} ₽</div>
+<button onclick="add(${p.id})">Добавить в корзину</button>
+</div>`).join("");
+}
+function add(id){
+let item=cart.find(x=>x.id===id);
+if(item)item.qty++;else cart.push({id,qty:1});
+renderCart();
+}
+function change(id,amount){
+let item=cart.find(x=>x.id===id);
+if(!item)return;
+item.qty+=amount;
+if(item.qty<=0)cart=cart.filter(x=>x.id!==id);
+renderCart();
+}
+function renderCart(){
+let count=cart.reduce((s,x)=>s+x.qty,0);
+let total=cart.reduce((s,x)=>s+x.qty*products.find(p=>p.id===x.id).price,0);
+document.getElementById("count").textContent=count;
+document.getElementById("total").textContent=total.toLocaleString("ru-RU");
+document.getElementById("cartItems").innerHTML=cart.length?cart.map(x=>{
+let p=products.find(z=>z.id===x.id);
+return `<div class="cart-item"><span>${p.name} — ${p.price.toLocaleString("ru-RU")} ₽</span>
+<div><button onclick="change(${x.id},-1)">−</button> ${x.qty} <button onclick="change(${x.id},1)">+</button></div>
+</div>`;
+}).join(""):"Корзина пока пуста";
+}
+function order(){
+if(!cart.length){alert("Сначала добавьте товары в корзину");return;}
+let name=document.getElementById("customerName").value.trim();
+let phone=document.getElementById("customerPhone").value.trim();
+if(!name||!phone){alert("Укажите имя и телефон");return;}
+let lines=cart.map(x=>{let p=products.find(z=>z.id===x.id);return `${p.name} — ${x.qty} шт. — ${p.price*x.qty} ₽`;}).join("\n");
+let total=cart.reduce((s,x)=>s+x.qty*products.find(p=>p.id===x.id).price,0);
+let message=`Заказ Flowers-shop\nИмя: ${name}\nТелефон: ${phone}\n${lines}\nИтого: ${total} ₽`;
+document.getElementById("orderMessage").textContent="Заказ подготовлен. Скопируйте его и отправьте продавцу.";
+navigator.clipboard.writeText(message).then(()=>alert("Заказ скопирован! Отправьте его продавцу.")).catch(()=>alert(message));
+}
+renderProducts();
+renderCart();
+</script>
+</body>
+</html>
